@@ -152,7 +152,7 @@ describe('Jobs Module', () => {
                 expect(q.done).to.be.false;
             });
         });
-        describe.only('run', () => {
+        describe('run', () => {
             it('should execute the job and emit status', async function(done) {
                 this.timeout(3000);
                 const payloadFake = sinon.fake.resolves('hey');

@@ -130,8 +130,9 @@ class JobQueue {
      *
      * @param {Array<Job>} jobs
      * @param {Number} concurrentJobs
+     * @callback cb
      */
-    constructor(jobs = [], concurrentJobs = 1) {
+    constructor(jobs = [], concurrentJobs = 1, cb) {
         jobs.forEach((j, i) => {
             const good = j instanceof Job;
             if(!good) {
@@ -145,6 +146,7 @@ class JobQueue {
         this.complete = [];
         this.reporter = new Reporter();
         this.now = Date.now();
+        this.callBack = cb;
     }
 
     get runAnother() {
@@ -178,15 +180,15 @@ class JobQueue {
 
     /**
      * executes jobs until toDo is empty
+     *
      * @emits Reporter:jobStarted
      * @emits Reporter:jobFinished
      * @emits Reporter:done
      */
-    run(cb) {
-        console.log('cb', cb);
+    run() {
         const _this = this;
         while(this.runAnother) {
-            const job = this.toDo.shift();
+            const job = _this.toDo.shift();
             _this.running[job.id] = job;
             _this.report('jobStarted', job);
             job
@@ -200,8 +202,7 @@ class JobQueue {
         }
         if(_this.done) {
             _this.report('done');
-            console.log(typeof cb);
-            return cb(null, _this);
+            return this.callBack(null, this.complete.map(j => j));
             // return Promise.resolve(_this);
         }
     }
