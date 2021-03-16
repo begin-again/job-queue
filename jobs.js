@@ -34,7 +34,7 @@ class Job {
      * @param {Object} [params]
      * @param {String} [name] - job name
      */
-    constructor(payload, params = [], name) {
+    constructor(payload, params = {}, name) {
         this.payload = payload;
         this._name = name;
         this._result = null;
