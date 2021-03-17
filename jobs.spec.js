@@ -12,42 +12,47 @@ describe('Jobs Module', () => {
             const payloadFake = sinon.fake.resolves('hey');
             const params = { hey: 1, you: 2 };
             const job = new Job(payloadFake, params);
+            job.reporter.on('done', ({isDone, result}) => {
+                expect(isDone).to.be.true;
+                expect(payloadFake).calledOnceWith(params);
+                expect(result).to.equal('hey')
+            })
             expect(job.isDone).to.be.false;
 
-            const result = await job.exec();
-
-            expect(result).to.equal('hey');
-            expect(job.isDone).to.be.true;
-            expect(payloadFake).calledOnceWith(params);
+            await job.exec();
         });
         it('should trap non-promise payloads on exec', async () => {
             const payloadFake = sinon.fake.returns('hey');
             const params = { hey: 1, you: 2 };
             const job = new Job(payloadFake, params);
+            job.reporter.on('done', ({isDone, result, error}) => {
+                expect(isDone).to.be.true;
+                expect(payloadFake).calledOnceWith(params);
+                expect(result).keys('error');
+            })
+
             expect(job.isDone).to.be.false;
             expect(job.error).to.be.undefined;
 
-            const result = await job.exec();
+            await job.exec();
 
-            expect(result).keys('error');
-            expect(job.error).not.to.be.empty;
-            expect(job.isDone).to.be.true;
-            expect(payloadFake).calledOnceWith(params);
         });
         it('should have status text', async () => {
             const payloadFake = sinon.fake.resolves('hey');
             const params = { hey: 1, you: 2 };
             const job = new Job(payloadFake, params);
+            job.reporter.on('done', ({isDone, result, error, status}) => {
+                expect(isDone).to.be.true;
+                expect(payloadFake).calledOnceWith(params);
+                expect(result).to.equal('hey');
+                expect(error).to.be.undefined;
+                expect(job.status).to.equal('done');
+            })
             expect(job.isDone).to.be.false;
             expect(job.status).equals('waiting');
 
-            const result = await job.exec();
+            await job.exec();
 
-            expect(result).to.equal('hey');
-            expect(job.status).to.equal('done');
-            expect(job.error).to.be.undefined;
-            expect(job.isDone).to.be.true;
-            expect(payloadFake).calledOnceWith(params);
         });
         it('should have some properties', () => {
             const payloadFake = sinon.fake.resolves('hey');
@@ -153,26 +158,23 @@ describe('Jobs Module', () => {
             });
         });
         describe('run', () => {
-            it('should execute the job and emit status', async function(done) {
-                this.timeout(3000);
-                const payloadFake = sinon.fake.resolves('hey');
+            it('should execute the job and emit status', function(done) {
+                const payloadFake1 = sinon.fake.resolves('hey');
+                const payloadFake2 = sinon.fake.resolves('there');
                 const jobs = [];
                 const maxConcurrentJobs = 1;
                 this.jobFinishedCount = 0;
                 this.jobStartedCount = 0;
                 this.doneCount = 0;
-                jobs.push(new Job(payloadFake));
-                jobs.push(new Job(payloadFake));
-                const tester = (error, { toDo, running, complete }) => {
-                    console.log('wtf');
-                    expect(error).to.be.undefined;
-                    expect(toDo).to.equal(0);
-                    expect(running).to.equal(0);
-                    expect(complete).to.equal(2, 'complete should be same as number of jobs');
+                jobs.push(new Job(payloadFake1,{}, 'one'));
+                jobs.push(new Job(payloadFake2, {}, 'two'));
+                const tester = ({ toDo, running, complete }) => {
+                    expect(toDo).to.be.empty;
+                    expect(running).to.be.empty;
+                    expect(complete.length).to.equal(2, 'complete should be same as number of jobs');
 
                     expect(this.jobFinishedCount).to.equal(2, 'jobFinishedCount should be 2');
                     expect(this.jobStartedCount).to.equal(2, 'jobStartedCount should be 2');
-
                     done();
                 };
 
@@ -187,7 +189,9 @@ describe('Jobs Module', () => {
                     this.jobFinishedCount++;
                 });
 
-                q.run(tester);
+                q.reporter.on('done', tester)
+
+                q.run()
 
             });
         });

@@ -16,8 +16,8 @@ class Reporter extends EventEmitter {
         super.on(...args);
     }
 
-    fireEvent(msg, id) {
-        this.emit(msg, id);
+    fireEvent(msg, data) {
+        this.emit(msg, data);
     }
 }
 
@@ -44,6 +44,15 @@ class Job {
         this.isRunning = this.isDone = false;
         this.isWaiting = true;
         this.initNow = Date.now();
+    }
+
+    toJSON(){
+        return {
+            id: this.id,
+            name: this.name || 'Not Specified',
+            status: this.status(),
+            result: this.result
+        }
     }
 
     get status() {
@@ -84,7 +93,7 @@ class Job {
         try {
             return this.payload(this.params)
                 .catch(err => {
-                    return { error: err };
+                    return { error: err};
                 })
                 .then((result) => {
                     this.isRunning = false;
@@ -92,19 +101,19 @@ class Job {
                     this.result = result;
                     this.execSeconds = (Date.now() - this.execNow) / 1000;
                     this.queueSeconds = (Date.now() - this.initNow) / 1000;
-                    this.reporter.fireEvent('done', this.id);
-                    return Promise.resolve(this.result);
+                    this.reporter.fireEvent('done', this);
+                    return Promise.resolve(this.result)
                 });
         }
         catch (err) {
             this.isRunning = false;
             this.isDone = true;
             this.error = err.message;
-            this.result = { error: this.error };
+            this.result = {error: err};
             this.execSeconds = (Date.now() - this.execNow) / 1000;
             this.queueSeconds = (Date.now() - this.initNow) / 1000;
-            this.reporter.fireEvent('done', this.id);
-            return Promise.resolve(this.result);
+            this.reporter.fireEvent('done', this);
+            return Promise.resolve(this.result)
         }
 
     }
@@ -130,9 +139,8 @@ class JobQueue {
      *
      * @param {Array<Job>} jobs
      * @param {Number} concurrentJobs
-     * @callback cb
      */
-    constructor(jobs = [], concurrentJobs = 1, cb) {
+    constructor(jobs = [], concurrentJobs = 1) {
         jobs.forEach((j, i) => {
             const good = j instanceof Job;
             if(!good) {
@@ -146,7 +154,6 @@ class JobQueue {
         this.complete = [];
         this.reporter = new Reporter();
         this.now = Date.now();
-        this.callBack = cb;
     }
 
     get runAnother() {
@@ -160,21 +167,22 @@ class JobQueue {
     /**
      *
      * @param {String} msg
-     * @param {Job} job
+     * @param {*} data
      * @emits Reporter: any
      */
-    report(msg, job) {
-        const running = Object.keys(this.running).length;
-        const toDo = this.toDo.length;
-        const complete = this.complete.length;
+    report(msg, data) {
         const seconds = (Date.now() - this.now) / 1000;
-        const details = { running, toDo, complete, seconds };
+        if(msg !== 'done'){
 
-        if(job) {
-            details.id = job.id;
+            const running = Object.keys(this.running).length;
+            const toDo = this.toDo.length;
+            const complete = this.complete.length;
+
+            this.reporter.fireEvent(msg, {...data, running, toDo, complete, seconds});
         }
-        console.log(msg);
-        this.reporter.fireEvent(msg, details);
+        else {
+            this.reporter.fireEvent(msg, {...data, seconds});
+        }
     }
 
 
@@ -184,27 +192,25 @@ class JobQueue {
      * @emits Reporter:jobStarted
      * @emits Reporter:jobFinished
      * @emits Reporter:done
+     * @returns {Promise<JobQueue>}
      */
     run() {
-        const _this = this;
         while(this.runAnother) {
-            const job = _this.toDo.shift();
-            _this.running[job.id] = job;
-            _this.report('jobStarted', job);
-            job
-                .exec()
-                .then(() => {
-                    _this.report('jobFinished', job);
-                    _this.complete.push(job);
-                    delete _this.running[job.id];
-                    _this.run();
-                });
+            const job = this.toDo.shift();
+            this.running[job.id] = job;
+            this.report('jobStarted', job);
+            job.exec();
+            job.reporter.on('done', (job) => {
+                this.report('jobFinished', job);
+                this.complete.push(job);
+                delete this.running[job.id];
+                this.run();
+            });
         }
-        if(_this.done) {
-            _this.report('done');
-            return this.callBack(null, this.complete.map(j => j));
-            // return Promise.resolve(_this);
+        if(this.done) {
+            this.report('done', {complete: this.complete, toDo: this.toDo, running: this.running});
         }
+
     }
 }
 
