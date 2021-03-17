@@ -12,11 +12,11 @@ describe('Jobs Module', () => {
             const payloadFake = sinon.fake.resolves('hey');
             const params = { hey: 1, you: 2 };
             const job = new Job(payloadFake, params);
-            job.reporter.on('done', ({isDone, result}) => {
+            job.reporter.on('done', ({ isDone, result }) => {
                 expect(isDone).to.be.true;
                 expect(payloadFake).calledOnceWith(params);
-                expect(result).to.equal('hey')
-            })
+                expect(result).to.equal('hey');
+            });
             expect(job.isDone).to.be.false;
 
             await job.exec();
@@ -25,11 +25,11 @@ describe('Jobs Module', () => {
             const payloadFake = sinon.fake.returns('hey');
             const params = { hey: 1, you: 2 };
             const job = new Job(payloadFake, params);
-            job.reporter.on('done', ({isDone, result, error}) => {
+            job.reporter.on('done', ({ isDone, result }) => {
                 expect(isDone).to.be.true;
                 expect(payloadFake).calledOnceWith(params);
                 expect(result).keys('error');
-            })
+            });
 
             expect(job.isDone).to.be.false;
             expect(job.error).to.be.undefined;
@@ -41,13 +41,13 @@ describe('Jobs Module', () => {
             const payloadFake = sinon.fake.resolves('hey');
             const params = { hey: 1, you: 2 };
             const job = new Job(payloadFake, params);
-            job.reporter.on('done', ({isDone, result, error, status}) => {
+            job.reporter.on('done', ({ isDone, result, error }) => {
                 expect(isDone).to.be.true;
                 expect(payloadFake).calledOnceWith(params);
                 expect(result).to.equal('hey');
                 expect(error).to.be.undefined;
                 expect(job.status).to.equal('done');
-            })
+            });
             expect(job.isDone).to.be.false;
             expect(job.status).equals('waiting');
 
@@ -166,7 +166,7 @@ describe('Jobs Module', () => {
                 this.jobFinishedCount = 0;
                 this.jobStartedCount = 0;
                 this.doneCount = 0;
-                jobs.push(new Job(payloadFake1,{}, 'one'));
+                jobs.push(new Job(payloadFake1, {}, 'one'));
                 jobs.push(new Job(payloadFake2, {}, 'two'));
                 const tester = ({ toDo, running, complete }) => {
                     expect(toDo).to.be.empty;
@@ -189,9 +189,9 @@ describe('Jobs Module', () => {
                     this.jobFinishedCount++;
                 });
 
-                q.reporter.on('done', tester)
+                q.reporter.on('done', tester);
 
-                q.run()
+                q.run();
 
             });
         });

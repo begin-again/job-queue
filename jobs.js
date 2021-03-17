@@ -46,13 +46,13 @@ class Job {
         this.initNow = Date.now();
     }
 
-    toJSON(){
+    toJSON() {
         return {
-            id: this.id,
-            name: this.name || 'Not Specified',
-            status: this.status(),
-            result: this.result
-        }
+            id: this.id
+            , name: this.name || 'Not Specified'
+            , status: this.status()
+            , result: this.result
+        };
     }
 
     get status() {
@@ -93,7 +93,7 @@ class Job {
         try {
             return this.payload(this.params)
                 .catch(err => {
-                    return { error: err};
+                    return { error: err };
                 })
                 .then((result) => {
                     this.isRunning = false;
@@ -102,18 +102,18 @@ class Job {
                     this.execSeconds = (Date.now() - this.execNow) / 1000;
                     this.queueSeconds = (Date.now() - this.initNow) / 1000;
                     this.reporter.fireEvent('done', this);
-                    return Promise.resolve(this.result)
+                    return Promise.resolve(this.result);
                 });
         }
         catch (err) {
             this.isRunning = false;
             this.isDone = true;
             this.error = err.message;
-            this.result = {error: err};
+            this.result = { error: err };
             this.execSeconds = (Date.now() - this.execNow) / 1000;
             this.queueSeconds = (Date.now() - this.initNow) / 1000;
             this.reporter.fireEvent('done', this);
-            return Promise.resolve(this.result)
+            return Promise.resolve(this.result);
         }
 
     }
@@ -172,16 +172,16 @@ class JobQueue {
      */
     report(msg, data) {
         const seconds = (Date.now() - this.now) / 1000;
-        if(msg !== 'done'){
+        if(msg !== 'done') {
 
             const running = Object.keys(this.running).length;
             const toDo = this.toDo.length;
             const complete = this.complete.length;
 
-            this.reporter.fireEvent(msg, {...data, running, toDo, complete, seconds});
+            this.reporter.fireEvent(msg, { ...data, running, toDo, complete, seconds });
         }
         else {
-            this.reporter.fireEvent(msg, {...data, seconds});
+            this.reporter.fireEvent(msg, { ...data, seconds });
         }
     }
 
@@ -208,7 +208,7 @@ class JobQueue {
             });
         }
         if(this.done) {
-            this.report('done', {complete: this.complete, toDo: this.toDo, running: this.running});
+            this.report('done', { complete: this.complete, toDo: this.toDo, running: this.running });
         }
 
     }
